@@ -250,5 +250,18 @@ tests_comms:
 	gcov temp_sensor.c -m
 
 
+tests_manager:
+	# first compile common modules (modules to test and dependencies)
+	gcc -c --coverage src/manager.c -I. $(INCDIR) $(DDEFS)
+	gcc -c src/comms.c -I. $(INCDIR)
+	# second auxiliary helper modules
+	gcc -c src/tests_ok.c -I $(INCDIR)
+	gcc --coverage src/tests_manager.c manager.o comms.o tests_ok.o -I $(INCDIR)
+	# run the test
+	./a.out
+	# process coverage
+	gcov manager.c -m
+
+
 
 # *** EOF ***

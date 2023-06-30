@@ -54,7 +54,7 @@ void Test_Comms (void)
         strcpy (s_test, "keepalive");
         printf(" test %s\n", s_test);
         resp = Comms_CheckMsg (s_test);
-        if (resp != KEEPALIVE)
+        if (resp != COMMS_KEEPALIVE)
             error = 1;
     }
 
@@ -63,7 +63,7 @@ void Test_Comms (void)
         strcpy (s_test, "get_temp");
         printf(" test %s\n", s_test);
         resp = Comms_CheckMsg (s_test);
-        if (resp != GET_TEMP)
+        if (resp != COMMS_GET_TEMP)
             error = 1;
     }
 
@@ -72,7 +72,7 @@ void Test_Comms (void)
         strcpy (s_test, "get_params");
         printf(" test %s\n", s_test);
         resp = Comms_CheckMsg (s_test);
-        if (resp != GET_PARAMS)
+        if (resp != COMMS_GET_PARAMS)
             error = 1;
     }
 
@@ -81,7 +81,7 @@ void Test_Comms (void)
         strcpy (s_test, "get_name");
         printf(" test %s\n", s_test);
         resp = Comms_CheckMsg (s_test);
-        if (resp != GET_NAME)
+        if (resp != COMMS_GET_NAME)
             error = 1;
     }
 
@@ -91,7 +91,7 @@ void Test_Comms (void)
         strcpy (s_test, "get_namx");
         printf(" test %s error str\n", s_test);
         resp = Comms_CheckMsg (s_test);
-        if (resp != ERROR)
+        if (resp != COMMS_ERROR)
             error = 1;
     }
     

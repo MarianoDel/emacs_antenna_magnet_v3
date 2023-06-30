@@ -14,11 +14,11 @@
 
 // Exported Types Constants and Macros -----------------------------------------
 typedef enum {
-    GET_PARAMS,
-    GET_TEMP,
-    KEEPALIVE,
-    GET_NAME,
-    ERROR
+    COMMS_GET_PARAMS,
+    COMMS_GET_TEMP,
+    COMMS_KEEPALIVE,
+    COMMS_GET_NAME,
+    COMMS_ERROR
     
 } comms_answers_e;
 

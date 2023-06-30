@@ -24,15 +24,20 @@ unsigned char usart1_have_data = 0;
 char usart1_msg_received [200] = { 0 };
 char usart1_msg_sended [200] = { 0 };
 
+void (*pU1Cb) (char *);
+
 // Mock the Usart2
 unsigned char usart2_have_data = 0;
-unsigned char usart2_have_activation_buffer = 0;
 char usart2_msg_received [200] = { 0 };
 char usart2_msg_sended [200] = { 0 };
 
 void (*pU2Cb) (char *);
 
+
 // Module Functions ------------------------------------------------------------
+/////////////////////////////
+// Usart1 Mocked Functions //
+/////////////////////////////
 void Usart1Send (char * msg)
 {
     strcpy(usart1_msg_sended, msg);
@@ -63,6 +68,27 @@ void Usart1FillRxBuffer (char * msg)
 }
 
 
+void Usart1Callback (void (* pCb) (char *))
+{
+    pU1Cb = pCb;
+}
+
+
+unsigned char Usart1HaveData (void)
+{
+    return usart1_have_data;
+}
+
+
+void Usart1HaveDataReset (void)
+{
+    usart1_have_data = 0;
+}
+
+
+/////////////////////////////
+// Usarts Mocked Functions //
+/////////////////////////////
 void Usart2Send (char * msg)
 {
     strcpy(usart2_msg_sended, msg);
@@ -111,22 +137,6 @@ void Usart2HaveDataReset (void)
 {
     usart2_have_data = 0;
 }
-
-
-unsigned char Usart2HaveActivationBuffer (void)
-{
-    return usart2_have_activation_buffer;
-}
-
-
-void Usart2HaveActivationBufferReset (void)
-{
-    usart2_have_activation_buffer = 0;
-}
-
-
-
-
 
 
 //--- end of file ---//
