@@ -1,31 +1,30 @@
-//-----------------------------------------------------
-// #### PROJECT: Magnet Antenna  F030 - Custom Board ####
+//-------------------------------------------------------
+// #### PROJECT: Magnet Antenna  G030 - Custom Board ####
 // ##
 // ## @Author: Med
 // ## @Editor: Emacs - ggtags
 // ## @TAGS:   Global
-// ## @CPU:    STM32F030
 // ##
-// #### COMM.H ########################################
-//-----------------------------------------------------
+// #### COMMS.H #########################################
+//-------------------------------------------------------
 
-#ifndef COMM_H_
-#define COMM_H_
+#ifndef COMMS_H_
+#define COMMS_H_
+
 
 // Exported Types Constants and Macros -----------------------------------------
-#define GET_PARAMS	10
-#define GET_TEMP 11
-#define GET_GAUSS 12
-#define CHANNEL	13
-#define SET_DISPLAY	14
-#define CMD_DISPLAY	15
-#define KEEP_ALIVE	16
-#define GET_NAME        17
+typedef enum {
+    GET_PARAMS,
+    GET_TEMP,
+    KEEPALIVE,
+    GET_NAME,
+    ERROR
+    
+} comms_answers_e;
 
-#define ERROR	50
 
 // Exported Module Functions ---------------------------------------------------
-unsigned char InterpretarMsg (char *);
+comms_answers_e Comms_CheckMsg (char * pStr);
 
 
-#endif /* COMM_H_ */
+#endif /* COMMS_H_ */

@@ -16,7 +16,6 @@
 #include "usart.h"
 #include "tim.h"
 #include "adc.h"
-// #include "dsp.h"
 #include "temp_sensor.h"
 #include "test_functions.h"
 
@@ -238,7 +237,7 @@ void TimingDelay_Decrement (void);
 int main(void)
 {
     char str1 [40];
-    unsigned short ts_cal1, ts_cal2;
+    unsigned short ts_cal1;
     int temp = 0;
     unsigned char state = 0;
     unsigned char a = 0;
@@ -297,188 +296,6 @@ int main(void)
     while(1)
     {
         //PROGRAMA DE PRODUCCION
-        switch (state)
-        {
-        case STAND_BY:
-            //envio la info de la antena cada 1 seg hasta que me contesten
-            LED_COMM_OFF;
-            if (!timer_standby)
-            {
-                LED_COMM_ON;
-                state = TX_SERIE_NC;
-                Usart1RxDisable();
-                USART1Send((char *)s_antena);
-            }
-
-            if (buffrx_ready)
-            {
-                state = RX_SERIE;
-                buffrx_ready = 0;
-            }
-            break;
-
-        case CONNECT:
-            //cuando se agota timer_1_seg salgo a STAND_BY
-            //me fijo si debo contestar algo
-            LED_COMM_ON;
-            if (answer == KEEP_ALIVE)
-            {
-                Wait_ms(5);
-                answer = 0;
-                LED_COMM_OFF;
-                state = TX_SERIE;
-                //apago RX
-                Usart1RxDisable();
-                USART1Send((char *)s_ok);
-            }
-
-            if (answer == GET_PARAMS)
-            {
-                Wait_ms(5);
-                answer = 0;
-                LED_COMM_OFF;
-                state = TX_SERIE;
-                //apago RX
-                Usart1RxDisable();
-                USART1Send((char *)s_antena);
-            }
-
-            if (answer == GET_NAME)
-            {
-                Wait_ms(5);
-                answer = 0;
-                LED_COMM_OFF;
-                state = TX_SERIE;
-                //apago RX
-                Usart1RxDisable();
-                USART1Send((char *)s_name);
-            }
-
-            if (answer == GET_TEMP)
-            {
-                Wait_ms(5);
-                LED_COMM_OFF;
-
-                temp = GetTemp();
-
-                //reviso errores de conversion
-                if ((temp >= 0) && (temp <= 85))
-                {
-                    memset(str1, 0, sizeof(str1));
-                    sprintf(str1, "temp,%03d.00\r\n", temp);
-                    //apago RX
-                    Usart1RxDisable();
-                    USART1Send(str1);
-
-                    answer = 0;
-                    state = TX_SERIE;
-                }
-            }
-
-            if ((buffrx_ready) && (state == CONNECT))
-            {
-                state = RX_SERIE;
-                buffrx_ready = 0;
-            }
-
-            if (!timer_1seg)	//mas de 10 segs sin comunicacion
-            {
-                state = STAND_BY;
-            }
-            break;
-
-        case TX_SERIE:
-            //espero terminar de transmitir
-            if (!(USART1->CR1 & 0x80))
-            {
-                state = TX_SERIE2;
-                timer_standby = 2;
-            }
-            break;
-
-        case TX_SERIE2:
-            if (!timer_standby)
-            {
-                state = CONNECT;
-                LED_COMM_ON;
-                Usart1RxEnable();
-            }
-            break;
-
-        case TX_SERIE_NC:
-            //espero terminar de transmitir
-            if (!(USART1->CR1 & 0x80))
-            {
-                state = TX_SERIE2_NC;
-                timer_standby = 2;
-            }
-            break;
-
-        case TX_SERIE2_NC:
-            if (!timer_standby)
-            {
-                state = STAND_BY;
-                timer_standby = 1000;
-                LED_COMM_OFF;
-                Usart1RxEnable();
-            }
-            break;
-
-        case RX_SERIE:
-            //reviso que me llego, igual paso al estado conectado
-            //si entiendo el mensaje
-            answer = 0;
-            a = InterpretarMsg ((char *)pbuffrx_cpy);
-            //a = InterpretarMsg ((char *)pbuffrx);
-
-            switch (a)
-            {
-            case GET_PARAMS:
-                answer = GET_PARAMS;
-                timer_1seg = 10;
-                break;
-
-            case GET_TEMP:
-                answer = GET_TEMP;
-                timer_1seg = 10;
-                break;
-
-            case GET_NAME:
-                answer = GET_NAME;
-                timer_1seg = 10;
-                break;
-                
-            case SET_DISPLAY:
-                break;
-
-            case CMD_DISPLAY:
-                break;
-
-            case KEEP_ALIVE:
-                answer = KEEP_ALIVE;
-                timer_1seg = 10;
-                break;
-
-            case ERROR:
-            default:
-                //rx_error++;
-                //state = STAND_BY;
-                break;
-            }
-            if (timer_1seg == 0)
-                state = STAND_BY;
-            else
-                state = CONNECT;
-
-            break;
-
-        case TEMP_SENSE:
-            break;
-
-        default:
-            state = STAND_BY;
-            break;
-        }
     }
 
     return 0;
@@ -508,12 +325,11 @@ void SysTickError (void)
 void TimingDelay_Decrement(void)
 {
     TIM_Timeouts ();
+
+    Manager_Timeouts ();
     
     if (timer_standby)
         timer_standby--;
-
-    // if (timer_led)
-    //     timer_led--;
 
 }
 

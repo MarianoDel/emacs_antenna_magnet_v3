@@ -225,16 +225,6 @@ tests:
 	./a.out
 
 
-tests_comms_power:
-	# first module objects to test
-	gcc -c src/comms_power.c -I. $(INCDIR) $(DDEFS)
-	# second auxiliary helper modules
-	gcc -c src/tests_ok.c -I $(INCDIR)
-	gcc -c src/tests_mock_usart.c -I $(INCDIR)
-	gcc src/tests_comms_power.c comms_power.o tests_ok.o tests_mock_usart.o -I $(INCDIR) $(DDEFS)
-	./a.out
-
-
 tests_temp_sensor:
 	# first compile common modules (modules to test and dependencies)
 	gcc -c --coverage src/temp_sensor.c -I. $(INCDIR)
@@ -242,6 +232,18 @@ tests_temp_sensor:
 	# second auxiliary helper modules
 	gcc -c src/tests_ok.c -I $(INCDIR)
 	gcc --coverage src/tests_temp_sensor.c temp_sensor.o dsp.o tests_ok.o -I $(INCDIR)
+	# run the test
+	./a.out
+	# process coverage
+	gcov temp_sensor.c -m
+
+
+tests_comms:
+	# first compile common modules (modules to test and dependencies)
+	gcc -c --coverage src/comms.c -I. $(INCDIR)
+	# second auxiliary helper modules
+	gcc -c src/tests_ok.c -I $(INCDIR)
+	gcc --coverage src/tests_comms.c comms.o tests_ok.o -I $(INCDIR)
 	# run the test
 	./a.out
 	# process coverage
