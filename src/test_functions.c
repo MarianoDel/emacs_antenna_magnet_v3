@@ -41,41 +41,19 @@ extern volatile unsigned short adc_ch [];
 
 
 // Module Private Functions ----------------------------------------------------
-void TF_Led_Lock (void);
 void TF_Led (void);
-// void TF_SW_UP (void);
-// void TF_SW_DWN (void);
-// void TF_SW_SEL (void);
-// void TF_lcdE (void);
-// void TF_lcdRS (void);
-// void TF_lcdBklight (void);
-// void TF_lcdData (void);
-// void TF_lcdBlink (void);
-// void TF_lcdScroll (void);
-// void TF_MenuFunction (void);
-// void TF_Dmx_Break_Detect (void);
-// void TF_Dmx_Packet (void);
-// void TF_Dmx_Packet_Data (void);
-// void TF_Temp_Channel (void);
+void TF_Led_Usart1_Tx (void);
+void TF_Led_Usart1_TxRx (void);
 
 
 // Module Functions ------------------------------------------------------------
 void TF_Hardware_Tests (void)
 {
-    TF_Led ();    //simple led functionality
-    // TF_SW_UP();
-    // TF_SW_DWN();
-    // TF_SW_SEL();    
-    // TF_lcdE();
-    // TF_lcdRS();
-    // TF_lcdBklight();    
-    // TF_lcdData();
-    // TF_lcdBlink();
-    // TF_lcdScroll();
-    // TF_Dmx_Break_Detect ();
-    // TF_Dmx_Packet ();    
-    // TF_Dmx_Packet_Data ();
-    // TF_Temp_Channel ();    
+    // TF_Led ();    //simple led functionality
+    
+    // TF_Led_Usart1_Tx ();
+
+    TF_Led_Usart1_TxRx ();    
     
 }
 
@@ -90,6 +68,54 @@ void TF_Led (void)
             LED_ON;
 
         Wait_ms(300);
+    }
+}
+
+
+void TF_Led_Usart1_Tx (void)
+{
+    
+    Usart1Config();
+    
+    while (1)
+    {
+        LED_ON;
+        Usart1Send("Prueba en usart1\n");
+        Wait_ms(100);
+        LED_OFF;
+
+        Wait_ms(2000);
+    }
+}
+
+
+extern volatile unsigned short timer_standby;
+void TF_Led_Usart1_TxRx (void)
+{
+    char buff [30] = { 0 };
+
+    Wait_ms(5000);    
+    Usart1Config();
+    
+    while (1)
+    {
+        if (!timer_standby)
+        {
+            timer_standby = 2000;
+            Usart1Send("Prueba en usart1\n");
+        }
+
+        if (Usart1HaveData())
+        {
+            Usart1ReadBuffer((unsigned char *) buff, 30);
+            Usart1HaveDataReset();
+            if (!strncmp(buff, "Prueba en usart1", sizeof("Prueba en usart1") - 1))
+            {
+                LED_ON;
+                Wait_ms(100);
+                LED_OFF;
+            }
+        }
     }
 }
 

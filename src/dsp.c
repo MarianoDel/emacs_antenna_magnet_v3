@@ -34,47 +34,6 @@ unsigned short RandomGen (unsigned int seed)
 
 }
 
-#ifdef USE_MA8_U16_CIRCULAR
-//set de punteros y vaciado del filtro
-//recibe:
-// puntero a estructura de datos del filtro "ma8_u16_data_obj_t *"
-void MA8_U16Circular_Reset (ma8_u16_data_obj_t * p_data)
-{
-    for (unsigned char i = 0; i < 8; i++)
-        p_data->v_ma[i] = 0;
-
-    p_data->p_ma = p_data->v_ma;
-    p_data->total_ma = 0;
-}
-
-//Filtro circular, necesito activar previamente con MA8_U16Circular_Reset()
-//recibe:
-// puntero a estructura de datos del filtro "ma8_u16_data_obj_t *"
-// nueva mustra "new_sample"
-//contesta:
-// resultado del filtro
-unsigned short MA8_U16Circular (ma8_u16_data_obj_t *p_data, unsigned short new_sample)
-{
-    p_data->total_ma -= *(p_data->p_ma);
-    p_data->total_ma += new_sample;
-    *(p_data->p_ma) = new_sample;
-
-    if (p_data->p_ma < ((p_data->v_ma) + 7))
-        p_data->p_ma += 1;
-    else
-        p_data->p_ma = p_data->v_ma;
-
-    return (unsigned short) (p_data->total_ma >> 3);    
-}
-
-unsigned short MA8_U16Circular_Only_Calc (ma8_u16_data_obj_t *p_data)
-{
-    return (unsigned short) (p_data->total_ma >> 3);
-}
-
-#endif    //USE_MA8_U16_CIRCULAR
-
-
 #ifdef USE_MA16_U16_CIRCULAR
 //set de punteros y vaciado del filtro
 //recibe:
@@ -93,7 +52,7 @@ void MA16_U16Circular_Reset (ma16_u16_data_obj_t * p_data)
 //Filtro circular, necesito activar previamente con MA16_U16Circular_Reset()
 //recibe:
 // puntero a estructura de datos del filtro "ma16_u16_data_obj_t *"
-// nueva mustra "new_sample"
+// nueva muestra "new_sample"
 //contesta:
 // resultado del filtro
 unsigned short MA16_U16Circular (ma16_u16_data_obj_t *p_data, unsigned short new_sample)
@@ -109,6 +68,7 @@ unsigned short MA16_U16Circular (ma16_u16_data_obj_t *p_data, unsigned short new
 
     return (unsigned short) (p_data->total_ma >> 4);    
 }
+
 
 unsigned short MA16_U16Circular_Only_Calc (ma16_u16_data_obj_t *p_data)
 {
@@ -233,17 +193,14 @@ short PID (pid_data_obj_t * p)
     //K1
     acc = k1 * error;
     val_k1 = acc / 128;
-    // val_k1 = acc / 1024;
 
     //K2
     acc = k2 * p->error_z1;
     val_k2 = acc / 128;
-    // val_k2 = acc / 1024;
 
     //K3
     acc = k3 * p->error_z2;
     val_k3 = acc / 128;
-    // val_k3 = acc / 1024;
 
     d = p->last_d + val_k1 - val_k2 + val_k3;
 
@@ -255,56 +212,12 @@ short PID (pid_data_obj_t * p)
     return d;
 }
 
-
-short PI (pid_data_obj_t * p)
-{
-    int acc = 0;
-    short error = 0;
-    short d = 0;
-
-    unsigned short k1 = 0;
-    unsigned short k2 = 0;
-    
-    short val_k1 = 0;
-    short val_k2 = 0;
-
-    k1 = p->kp + p->ki;
-    k2 = p->kp;
-    
-    error = p->setpoint - p->sample;
-
-    //K1
-    acc = k1 * error;
-    val_k1 = acc >> PID_CONSTANT_DIVIDER;
-
-    //K2
-    acc = k2 * p->error_z1;
-    val_k2 = acc >> PID_CONSTANT_DIVIDER;
-
-    d = p->last_d + val_k1 - val_k2;
-
-    //Update PID variables
-    p->error_z1 = error;
-    p->last_d = d;
-
-    return d;
-}
-
-
 void PID_Flush_Errors (pid_data_obj_t * p)
 {
     p->last_d = 0;
     p->error_z1 = 0;
     p->error_z2 = 0;
 }
-
-
-void PID_Flush_Only_Errors (pid_data_obj_t * p)
-{
-    p->error_z1 = 0;
-    p->error_z2 = 0;
-}
-
 
 short PID_Small_Ki (pid_data_obj_t * p)
 {
@@ -364,65 +277,108 @@ void PID_Small_Ki_Flush_Errors (pid_data_obj_t * p)
 }
 
 
-short PR (pr_data_obj_t * p)
-{
-    // int acc = 0;
-    float acc = 0.0;
-    short error = 0;
-    short d = 0;
-
-    short forward_val = 0;
-    short backward_val = 0;
-
-    error = p->setpoint - p->sample;
-
-    // //Forward Params
-    // acc = p->b0 * error + p->b1 * p->error_z1 + p->b2 * p->error_z2;    
-    // forward_val = acc >> PID_CONSTANT_DIVIDER;
-
-    // //Backwards Params
-    // acc = p->a1 * p->d_z1 + p->a2 * p->d_z2;
-    // backward_val = acc >> PID_CONSTANT_DIVIDER;
-
-    // d = forward_val - backward_val;
-
-    //Forward Params & Backwards float
-    acc = p->b0 * error +
-        p->b1 * p->error_z1 +
-        p->b2 * p->error_z2 -
-        p->a1 * p->d_z1 -
-        p->a2 * p->d_z2;
-    
-    d = (short) acc;
-    
-    
-    //Update PR variables
-    p->error_z2 = p->error_z1;
-    p->error_z1 = error;
-    p->d_z2 = p->d_z1;
-    p->d_z1 = d;    
-
-    return d;
-}
-
-
-void PR_Flush_Errors (pr_data_obj_t * p)
-{
-    p->d_z1 = 0.0;
-    p->d_z2 = 0.0;    
-    p->error_z1 = 0.0;
-    p->error_z2 = 0.0;
-}
-
-
-void PR_Flush_Only_Errors (pr_data_obj_t * p)
-{
-    p->error_z1 = 0.0;
-    p->error_z2 = 0.0;
-}
-
 #endif    //USE_PID_CONTROLLERS
 
+
+//calculate the samples fequencies from a samples vector
+//the size of the vector ranges must be at least one more of the 
+//size of the selected classes (ranges_size)
+//frequencies vector must be the same size
+void DSP_Vector_Calcule_Frequencies (unsigned short *samples,
+                                     unsigned char samples_size,
+                                     unsigned short *ranges,
+                                     unsigned char ranges_size,
+                                     unsigned char *frequencies)
+
+{
+    // char s_to_send [64];
+    unsigned char i, j;
+    unsigned short min_value = 0;
+    unsigned short max_value = 0;
+    unsigned short range;
+    unsigned short width;
+
+    //get the MAX and min from the vector samples
+    min_value = DSP_Vector_Get_Min_Value(samples, samples_size);
+    max_value = DSP_Vector_Get_Max_Value(samples, samples_size);
+
+    // sprintf(s_to_send, "min_value: %d, max_value: %d\n",
+    //         min_value,
+    //         max_value);
+    // Usart2Send(s_to_send);       
+
+    range = max_value - min_value;
+    width = range / (ranges_size - 1);
+    
+    //assembly of the ranges vector
+    for (i = 0; i < (ranges_size - 1); i++)
+        *(ranges + i) = min_value + width * i;
+
+    *(ranges + ranges_size - 1) = max_value;
+    //end of assembly
+    
+    for (i = 0; i < ranges_size; i++)
+    {
+        //TODO: mejorar este algoritmo, no entra en el ultimo rango
+        //o si es <= lo cuenta dos veces
+        for (j = 0; j < samples_size; j++)
+        {
+            if ((*(samples + j) >= *(ranges + i)) &&
+                 (*(samples + j) < *(ranges + i + 1)))
+                *(frequencies + i) += 1;
+        }
+    }
+}
+
+//get a vector min value
+unsigned short DSP_Vector_Get_Min_Value (unsigned short *vect, unsigned char vect_size)
+{
+    unsigned char i;
+    unsigned short min_value = 0xFFFF;
+    
+    for (i = 0; i < vect_size; i++)
+    {
+        if (min_value > *(vect + i))
+            min_value = *(vect + i);
+    }
+
+    return min_value;
+}
+
+
+//get a vector MAX value
+unsigned short DSP_Vector_Get_Max_Value (unsigned short *vect, unsigned char vect_size)
+{
+    unsigned char i;
+    unsigned short max_value = 0;
+    for (i = 0; i < vect_size; i++)
+    {
+        if (max_value < *(vect + i))
+            max_value = *(vect + i);
+    }
+
+    return max_value;
+}
+
+
+unsigned short IIR_first_order (IIR_first_order_data_obj_t * p_iir, unsigned short sample)
+{
+    unsigned int output = 0;
+    
+    unsigned int b = p_iir->b_param_to_div_by_1000;
+    unsigned int a = p_iir->a_param_to_div_by_1000;
+
+    b = b * sample;
+    b = b / 1000;
+
+    a = a * p_iir->output_z1;
+    a = a / 1000;
+
+    output = b + a;
+    p_iir->output_z1 = output;
+
+    return (unsigned short) output;
+}
 
 
 //--- end of file ---//

@@ -78,7 +78,7 @@ SRC += ./src/gpio.c
 SRC += ./src/tim.c
 # SRC += ./src/adc.c
 # SRC += ./src/dma.c
-# SRC += ./src/usart.c
+SRC += ./src/usart.c
 # SRC += ./src/flash_program.c
 # SRC += ./src/hard.c
 
@@ -235,19 +235,17 @@ tests_comms_power:
 	./a.out
 
 
-tests_lcd_main_menu:
+tests_temp_sensor:
 	# first compile common modules (modules to test and dependencies)
-	gcc -c src/lcd_utils.c -I. $(INCDIR)
-	gcc -c src/menues.c -I. $(INCDIR) -DSTM32F030
-	gcc -c src/temperatures.c -I. $(INCDIR)
-	# the module that implements tests_lcd_application.h functions
-	gcc -c `pkg-config --cflags gtk+-3.0` src/tests_lcd_main_menu.c -o tests_lcd_main_menu.o
-	# then the gtk lib modules
-	gcc -c `pkg-config --cflags gtk+-3.0` src/tests_glade_lcd.c -o tests_glade_lcd.o
-	# link everithing
-	gcc tests_glade_lcd.o tests_lcd_main_menu.o lcd_utils.o menues.o temperatures.o `pkg-config --libs gtk+-3.0` -o tests_gtk
-	# run the simulation
-	./tests_gtk
+	gcc -c --coverage src/temp_sensor.c -I. $(INCDIR)
+	gcc -c src/dsp.c -I. $(INCDIR)
+	# second auxiliary helper modules
+	gcc -c src/tests_ok.c -I $(INCDIR)
+	gcc --coverage src/tests_temp_sensor.c temp_sensor.o dsp.o tests_ok.o -I $(INCDIR)
+	# run the test
+	./a.out
+	# process coverage
+	gcov temp_sensor.c -m
 
 
 

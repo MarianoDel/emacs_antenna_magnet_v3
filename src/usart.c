@@ -1,14 +1,12 @@
-//---------------------------------------------
+//----------------------------------------------
 // ##
 // ## @Author: Med
 // ## @Editor: Emacs - ggtags
 // ## @TAGS:   Global
-// ## @CPU:    STM32F030
+// ## @CPU:    STM32G030
 // ##
-// #### UART.C ################################
-//---------------------------------------------
-
-// Includes --------------------------------------------------------------------
+// #### USART.C ################################
+//----------------------------------------------
 #include "hard.h"
 #include "stm32g0xx.h"
 #include "usart.h"
@@ -16,305 +14,401 @@
 #include <string.h>
 
 
-// Usart Configs ---------------------------------------------------------------
-#define USE_USART1			
-//#define USE_USART2
+// Module Private Types Constants and Macros -----------------------------------
+#define USART1_CLK    (RCC->APBENR2 & 0x00004000)
+#define USART1_CLK_ON    (RCC->APBENR2 |= 0x00004000)
+#define USART1_CLK_OFF    (RCC->APBENR2 &= ~0x00004000)
 
-#define BUFFRX_DIM 64
-#define BUFFTX_DIM 64
+#define USART2_CLK    (RCC->APBENR1 & 0x00020000)
+#define USART2_CLK_ON    (RCC->APBENR1 |= 0x00020000)
+#define USART2_CLK_OFF    (RCC->APBENR1 &= ~0x00020000)
+
+#define USART_64MHz_9600    6666
+#define USART_64MHz_115200    555
+#define USART_64MHz_250000    256
+#define USART_16MHz_9600    1666
 
 
 // Externals -------------------------------------------------------------------
-#ifdef USE_USART1
-extern volatile unsigned char buffrx_ready;
-extern volatile unsigned char *pbuffrx;
-extern volatile unsigned char *pbuffrx_cpy;
-#endif
-
-#ifdef USE_USART2
-extern volatile unsigned char usart2_pckt_ready;
-extern volatile unsigned char usart2_have_data;
-//extern volatile unsigned char usart2_mini_timeout;
-extern volatile unsigned char tx2buff[];
-extern volatile unsigned char rx2buff[];
-#endif
 
 
 // Globals ---------------------------------------------------------------------
-#ifdef USE_USART1
+volatile unsigned char usart1_have_data = 0;
 volatile unsigned char * ptx1;
 volatile unsigned char * ptx1_pckt_index;
 volatile unsigned char * prx1;
+volatile unsigned char tx1buff[SIZEOF_DATA];
+volatile unsigned char rx1buff[SIZEOF_DATA];
 
-//Reception buffer.
-unsigned char buffrx[BUFFRX_DIM];
-unsigned char buffrx_cpy[BUFFRX_DIM];
-
-//Transmission buffer.
-unsigned char bufftx[BUFFTX_DIM];
-unsigned char * pbufftx;
-unsigned char * pbufftx2;
-#endif
-
-
-#ifdef USE_USART2
+volatile unsigned char usart2_have_data = 0;
 volatile unsigned char * ptx2;
 volatile unsigned char * ptx2_pckt_index;
 volatile unsigned char * prx2;
-#endif
+volatile unsigned char tx2buff[SIZEOF_DATA];
+volatile unsigned char rx2buff[SIZEOF_DATA];
+
+
+// Module Private Functions ----------------------------------------------------
 
 
 // Module Functions ------------------------------------------------------------
-#ifdef USE_USART1
-void USART1Config(void)
+// void Usart1RxDisable (void)
+// {
+// 	USART1->CR1 &= ~USART_CR1_RXNEIE;
+// 	USART1->CR1 &= ~USART_CR1_RE;
+// }
+
+// void Usart1RxEnable (void)
+// {
+// 	USART1->CR1 |= USART_CR1_RXNEIE | USART_CR1_RE;
+// }
+
+
+
+//////////////////////
+// USART1 Functions //
+//////////////////////
+void Usart1Config(void)
 {
-	if (!USART1_CLK)
-		USART1_CLK_ON;
+    if (!USART1_CLK)
+        USART1_CLK_ON;
 
-	// ptx1 = tx1buff;
-	// ptx1_pckt_index = tx1buff;
-	// prx1 = rx1buff;
-
-	USART1->BRR = USART_9600;
-	//USART1->CR2 |= USART_CR2_STOP_1;	//2 bits stop
-//	USART1->CR1 = USART_CR1_RE | USART_CR1_TE | USART_CR1_UE;
-//	USART1->CR1 = USART_CR1_RXNEIE | USART_CR1_RE | USART_CR1_UE;	//SIN TX
-	// USART1->CR1 = USART_CR1_RXNEIE | USART_CR1_RE | USART_CR1_TE | USART_CR1_UE;	//para pruebas TX
-#ifdef VER_2_0
-	USART1->CR2 |= USART_CR2_TXINV;	//tx invertido
+    // Usart1 9600 8N1 fifo disabled oversampled 16
+#if (defined CLOCK_FREQ_64_MHZ)
+    // PCKL 64MHz
+    USART1->BRR = USART_64MHz_9600;
+#elif (defined CLOCK_FREQ_16_MHZ)
+    // PCKL 16MHz
+    USART1->BRR = USART_16MHz_9600;    
+#else
+#error "No Clock Frequency defined on hard.h"
 #endif
+    
+    USART1->CR2 |= USART_CR2_TXINV;    // tx inverted
+    // USART1->CR1 = USART_CR1_RE | USART_CR1_TE | USART_CR1_UE;
+    // USART1->CR1 = USART_CR1_RXNEIE | USART_CR1_RE | USART_CR1_UE;	//SIN TX
+    USART1->CR1 = USART_CR1_RXNEIE_RXFNEIE | USART_CR1_RE | USART_CR1_TE | USART_CR1_UE;    //Rx int + Tx
 
-	USART1->CR1 = USART_CR1_TE | USART_CR1_UE;	//para pruebas solo TX
+    // config pins to alternative
+    unsigned int temp;
+    temp = GPIOB->MODER;    // 2 bits por pin
+    temp &= 0xFFFF0FFF;    // PB6 PB7 alternative
+    temp |= 0x0000A000;    
+    GPIOB->MODER = temp;
+    
+    // temp = GPIOA->AFR[1];
+    // temp &= 0xFFFFF00F;
+    // temp |= 0x00000110;    //PA10 -> AF1 PA9 -> AF1
+    // GPIOA->AFR[1] = temp;
+
+    ptx1 = tx1buff;
+    ptx1_pckt_index = tx1buff;
+    prx1 = rx1buff;
+    
+    NVIC_EnableIRQ(USART1_IRQn);
+    NVIC_SetPriority(USART1_IRQn, 5);
+}
 
 
-	//habilito el pin
-	GPIOA->AFR[0] = 0x00001100;	//PA2 -> AF1 PA3 -> AF1
 
-	//seteo punteros
-	pbuffrx = buffrx;
-	pbufftx = bufftx;
-	pbufftx2 = bufftx;
 
-	NVIC_EnableIRQ(USART1_IRQn);
-	NVIC_SetPriority(USART1_IRQn, 5);
+// void Usart1Enable_PB7_9600 (void)
+// {
+//     usart1_mode = USART_IN_MANUAL_MODE;
+    
+//     USART1->CR1 &= ~(USART_CR1_UE);    //disable
+//     USART1->BRR = USART_64MHz_9600;
+//     USART1->CR2 &= ~(USART_CR2_STOP_1);	//1 bits stop
+
+//     unsigned int temp;
+//     temp = GPIOB->MODER;    //2 bits por pin
+//     temp &= 0xFFFF3FFF;    //PB7 alternative
+//     temp |= 0x00008000;    //
+//     GPIOB->MODER = temp;
+
+//     temp = GPIOA->MODER;    //2 bits por pin
+//     temp &= 0xFFCFFFFF;    //PA10 input
+//     temp |= 0x00000000;    //
+//     GPIOA->MODER = temp;
+
+//     USART1->CR1 = USART_CR1_RXNEIE_RXFNEIE | USART_CR1_RE | USART_CR1_UE;	//no TX
+    
+// }
+
+
+void Usart1SendSingle (unsigned char b)
+{
+    USART1->TDR = b;    
+}
+
+
+void Usart1Send (char * send)
+{
+    unsigned char i;
+
+    i = strlen(send);
+    Usart1SendUnsigned((unsigned char *)send, i);
+}
+
+
+void Usart1SendUnsigned(unsigned char * send, unsigned char size)
+{
+    if ((ptx1_pckt_index + size) < &tx1buff[SIZEOF_DATA])
+    {
+        memcpy((unsigned char *)ptx1_pckt_index, send, size);
+        ptx1_pckt_index += size;
+        USART1->CR1 |= USART_CR1_TXEIE_TXFNFIE;
+    }
+}
+
+
+unsigned char Usart1ReadBuffer (unsigned char * bout, unsigned short max_len)
+{
+    unsigned int len;
+
+    len = prx1 - rx1buff;
+
+    if (len < max_len)
+    {
+        *prx1 = '\0';    //buffer from int isnt ended with '\0' do it now
+        len += 1;    //space for '\0'
+    }
+    else
+    {
+        *(bout + max_len - 1) = '\0';
+        len = max_len - 1;
+    }
+
+    memcpy(bout, (unsigned char *) rx1buff, len);
+
+    //pointer adjust after copy
+    prx1 = rx1buff;
+    return (unsigned char) len;
 }
 
 
 void USART1_IRQHandler(void)
 {
-	unsigned char dummy;
+    unsigned char dummy;
 
-	// if (LED)
-	// 	LED_OFF;
-	// else
-	// 	LED_ON;
+    // USART in Rx mode --------------------------------------------------
+    if (USART1->ISR & USART_ISR_RXNE_RXFNE)
+    {
+        dummy = USART1->RDR & 0x0FF;
 
-	/* USART in mode Receiver --------------------------------------------------*/
-	if (USART1->ISR & USART_ISR_RXNE)
-	{
-		dummy = USART1->RDR & 0x0FF;
+        if (prx1 < &rx1buff[SIZEOF_DATA - 1])
+        {
+            if (dummy == '\n')
+            {
+                *prx1 = '\0';
+                usart1_have_data = 1;
+            }
+            else
+            {
+                *prx1 = dummy;
+                prx1++;
+            }
+        }
+        else
+            prx1 = rx1buff;    // fixes blocked with garbage problem
+    }
 
+    // USART in Tx mode --------------------------------------------------
+    if (USART1->CR1 & USART_CR1_TXEIE_TXFNFIE)
+    {
+        if (USART1->ISR & USART_ISR_TXE_TXFNF)
+        {
+            if ((ptx1 < &tx1buff[SIZEOF_DATA]) && (ptx1 < ptx1_pckt_index))
+            {
+                USART1->TDR = *ptx1;
+                ptx1++;
+            }
+            else
+            {
+                ptx1 = tx1buff;
+                ptx1_pckt_index = tx1buff;
+                USART1->CR1 &= ~USART_CR1_TXEIE_TXFNFIE;
+            }
+        }
+    }
 
-		//Saving incoming data.
-		*pbuffrx = dummy;
-
-		if (pbuffrx < &buffrx[BUFFRX_DIM])
-		{
-			if (*pbuffrx == '\n')
-			{
-
-				*pbuffrx = 0;
-
-				strcpy((char*)&buffrx_cpy[0], (const char *)&buffrx[0]);
-
-				buffrx_ready = 1;
-				pbuffrx = buffrx;
-				pbuffrx_cpy = buffrx_cpy;
-			}
-			else
-				pbuffrx++;
-
-		}
-		else
-			pbuffrx = buffrx;
-	}
-	// else
-	// 	USARTx->RQR |= 0x08;
-
-
-	/* USART in mode Transmitter -------------------------------------------------*/
-	if (USART1->CR1 & USART_CR1_TXEIE)
-	{
-		if (pbufftx2 < pbufftx)
-		{
-			USART1->TDR = *pbufftx2 & 0x0FF;
-			pbufftx2++;
-		}
-		else
-		{
-			USART1->CR1 &= ~USART_CR1_TXEIE;
-
-			pbufftx2 = bufftx;
-			pbufftx = bufftx;
-		}
-
-//		USARTx->RQR |= 0x08;
-	}
-
-	if ((USART1->ISR & USART_ISR_ORE) || (USART1->ISR & USART_ISR_NE) || (USART1->ISR & USART_ISR_FE))
-	{
-		USART1->ICR |= 0x0e;
-		dummy = USART1->RDR;
-	}
+    if ((USART1->ISR & USART_ISR_ORE) || (USART1->ISR & USART_ISR_NE) || (USART1->ISR & USART_ISR_FE))
+    {
+        USART1->ICR |= 0x0e;
+        dummy = USART1->RDR;
+    }
 }
 
 
-unsigned char USART1Send(char * send)
+unsigned char Usart1HaveData (void)
 {
-	unsigned char i;
-
-	i = strlen(send);
-
-	if ((pbufftx + i) < &bufftx[BUFFTX_DIM])
-	{
-
-		strcpy((char*)pbufftx, (const char *)send);
-		pbufftx += i;
-
-		USART1->CR1 |= USART_CR1_TXEIE;
-
-	}
-	else
-		return END_ERROR;
-
-
-	return WORKING;
+    return usart1_have_data;
 }
 
-void Usart1RxDisable (void)
+
+void Usart1HaveDataReset (void)
 {
-	USART1->CR1 &= ~USART_CR1_RXNEIE;
-	USART1->CR1 &= ~USART_CR1_RE;
+    usart1_have_data = 0;
 }
 
-void Usart1RxEnable (void)
+
+//////////////////////
+// USART2 Functions //
+//////////////////////
+void Usart2Config(void)
 {
-	USART1->CR1 |= USART_CR1_RXNEIE | USART_CR1_RE;
-}
+    if (!USART2_CLK)
+        USART2_CLK_ON;
 
-#endif	//USE_USART1
-
-#ifdef USE_USART2
-void USART2Config(void)
-{
-	if (!USART2_CLK)
-		USART2_CLK_ON;
-
-	GPIOA->AFR[0] |= 0x0001100;	//PA2 -> AF1 PA3 -> AF1
-
-	ptx2 = tx2buff;
-	ptx2_pckt_index = tx2buff;
-	prx2 = rx2buff;
-
-	USART2->BRR = USART_115200;
-	USART2->CR1 = USART_CR1_RXNEIE | USART_CR1_RE | USART_CR1_TE | USART_CR1_UE;
-
-	NVIC_EnableIRQ(USART2_IRQn);
-	NVIC_SetPriority(USART2_IRQn, 7);
-}
-
-void USART2_IRQHandler(void)
-{
-	unsigned char dummy;
-
-	/* USART in mode Receiver --------------------------------------------------*/
-	if (USART2->ISR & USART_ISR_RXNE)
-	{
-		//RX WIFI
-		dummy = USART2->RDR & 0x0FF;
-
-#ifdef USE_GSM_GATEWAY
-		if (prx2 < &rx2buff[SIZEOF_DATA])
-		{
-			*prx2 = dummy;
-			prx2++;
-			usart2_have_data = 1;
-		}
-			usart2_mini_timeout = TT_GPS_MINI;
+    // Usart1 9600 8N1 fifo disabled oversampled 16
+#ifdef CLOCK_FREQ_16_MHZ    // PCKL 16MHz
+    USART2->BRR = USART_16MHz_9600;
 #endif
+#ifdef CLOCK_FREQ_64_MHZ    // PCKL 64MHz
+    USART2->BRR = USART_64MHz_9600;
+#endif
+    // USART1->CR2 |= USART_CR2_STOP_1;	//2 bits stop
+    // USART1->CR1 = USART_CR1_RE | USART_CR1_TE | USART_CR1_UE;
+    // USART1->CR1 = USART_CR1_RXNEIE | USART_CR1_RE | USART_CR1_UE;	//SIN TX
+    // USART2->CR1 = USART_CR1_TE | USART_CR1_UE;    //Solo Tx    
+    USART2->CR1 = USART_CR1_RXNEIE_RXFNEIE | USART_CR1_RE | USART_CR1_TE | USART_CR1_UE;    //Rx int + Tx
 
-	}
+    unsigned int temp;
+    temp = GPIOA->AFR[0];
+    temp &= 0xFFFF00FF;
+    temp |= 0x00001100;    //PA3 -> AF1 PA2 -> AF1
+    GPIOA->AFR[0] = temp;
 
-	/* USART in mode Transmitter -------------------------------------------------*/
-
-	if (USART2->CR1 & USART_CR1_TXEIE)
-	{
-		if (USART2->ISR & USART_ISR_TXE)
-		{
-			if ((ptx2 < &tx2buff[SIZEOF_DATA]) && (ptx2 < ptx2_pckt_index))
-			{
-				USART2->TDR = *ptx2;
-				ptx2++;
-			}
-			else
-			{
-				ptx2 = tx2buff;
-				ptx2_pckt_index = tx2buff;
-				USART2->CR1 &= ~USART_CR1_TXEIE;
-			}
-		}
-	}
-
-	if ((USART2->ISR & USART_ISR_ORE) || (USART2->ISR & USART_ISR_NE) || (USART2->ISR & USART_ISR_FE))
-	{
-		USART2->ICR |= 0x0e;
-		dummy = USART2->RDR;
-	}
+    ptx2 = tx2buff;
+    ptx2_pckt_index = tx2buff;
+    prx2 = rx2buff;
+    
+    NVIC_EnableIRQ(USART2_IRQn);
+    NVIC_SetPriority(USART2_IRQn, 6);
 }
+
+
+void Usart2SendSingle (unsigned char b)
+{
+    USART2->TDR = b;    
+}
+
 
 void Usart2Send (char * send)
 {
-	unsigned char i;
+    unsigned char i;
 
-	i = strlen(send);
-	Usart2SendUnsigned((unsigned char *) send, i);
+    i = strlen(send);
+    Usart2SendUnsigned((unsigned char *)send, i);
 }
+
+
+unsigned char Usart2SendVerifyEmpty (void)
+{
+    if (ptx2_pckt_index == tx2buff)
+        return 1;
+
+    return 0;
+}
+
 
 void Usart2SendUnsigned(unsigned char * send, unsigned char size)
 {
-	if ((ptx2_pckt_index + size) < &tx2buff[SIZEOF_DATA])
-	{
-		memcpy((unsigned char *)ptx2_pckt_index, send, size);
-		ptx2_pckt_index += size;
-		USART2->CR1 |= USART_CR1_TXEIE;
-	}
+    if ((ptx2_pckt_index + size) < &tx2buff[SIZEOF_DATA])
+    {
+        memcpy((unsigned char *)ptx2_pckt_index, send, size);
+        ptx2_pckt_index += size;
+        USART2->CR1 |= USART_CR1_TXEIE_TXFNFIE;
+    }
 }
 
-void Usart2SendSingle(unsigned char tosend)
+
+unsigned char Usart2ReadBuffer (unsigned char * bout, unsigned short max_len)
 {
-	Usart2SendUnsigned(&tosend, 1);
+    unsigned int len;
+
+    len = prx2 - rx2buff;
+
+    if (len < max_len)
+        len += 1;    //space for '\0' from int
+    else
+        len = max_len;
+
+    memcpy(bout, (unsigned char *) rx2buff, len);
+
+    //pointer adjust after copy
+    prx2 = rx2buff;
+    return (unsigned char) len;
 }
 
-unsigned char ReadUsart2Buffer (unsigned char * bout, unsigned short max_len)
+
+void USART2_IRQHandler(void)
 {
-	unsigned int len;
+    unsigned char dummy;
 
-	len = prx2 - rx2buff;
+    // USART in Rx mode --------------------------------------------------
+    if (USART2->ISR & USART_ISR_RXNE_RXFNE)
+    {
+        dummy = USART2->RDR & 0x0FF;
 
-	if (len < max_len)
-		memcpy(bout, (unsigned char *) rx2buff, len);
-	else
-	{
-		len = max_len;
-		memcpy(bout, (unsigned char *) rx2buff, len);
-	}
+        if (prx2 < &rx2buff[SIZEOF_DATA - 1])
+        {
+            if (dummy == '\r')
+            {
+            }
+            else if ((dummy == '\n') || (dummy == 26))    //CTRL+J ("\r\n"); CTRL-Z (26)
+            {
+                *prx2 = '\0';
+                usart2_have_data = 1;
+            }
+            else
+            {
+                *prx2 = dummy;
+                prx2++;
+            }
+        }
+        else
+            prx2 = rx2buff;    //soluciona problema bloqueo con garbage
 
-	//ajusto punteros de rx luego de la copia
-	prx2 = rx2buff;
+    }
 
-	return (unsigned char) len;
+    // USART in Tx mode -------------------------------------------------
+    if (USART2->CR1 & USART_CR1_TXEIE_TXFNFIE)
+    {
+        if (USART2->ISR & USART_ISR_TXE_TXFNF)
+        {
+            if ((ptx2 < &tx2buff[SIZEOF_DATA]) && (ptx2 < ptx2_pckt_index))
+            {
+                USART2->TDR = *ptx2;
+                ptx2++;
+            }
+            else
+            {
+                ptx2 = tx2buff;
+                ptx2_pckt_index = tx2buff;
+                USART2->CR1 &= ~USART_CR1_TXEIE_TXFNFIE;
+            }
+        }
+    }
+
+    if ((USART2->ISR & USART_ISR_ORE) || (USART2->ISR & USART_ISR_NE) || (USART2->ISR & USART_ISR_FE))
+    {
+        USART2->ICR |= 0x0e;
+        dummy = USART2->RDR;
+    }
 }
 
-#endif	///USE_USART2
+
+unsigned char Usart2HaveData (void)
+{
+    return usart2_have_data;
+}
+
+
+void Usart2HaveDataReset (void)
+{
+    usart2_have_data = 0;
+}
+
 
 //--- end of file ---//
