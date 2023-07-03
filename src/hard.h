@@ -48,4 +48,9 @@
 #define LED_OFF    (GPIOB->BSRR = 0x00010000)
 
 
+// Exported Functions -- Implemented on main -----------------------------------
+void Led_On (void);
+void Led_Off (void);
+
+
 #endif /* HARD_H_ */

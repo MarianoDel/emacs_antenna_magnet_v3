@@ -118,9 +118,6 @@ extern volatile unsigned short adc_ch [];
 volatile unsigned char adc_int_seq_ready = 0;
 #endif
 
-#ifdef ADC_WITH_TEMP_SENSE
-extern volatile unsigned short tt_take_temp_sample;
-#endif
 
 // Globals ---------------------------------------------------------------------
 #ifdef ADC_WITH_INT

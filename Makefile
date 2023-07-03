@@ -76,8 +76,8 @@ SRC += $(BOOTDIR)/syscalls/syscalls.c
 SRC += ./src/it.c
 SRC += ./src/gpio.c
 SRC += ./src/tim.c
-# SRC += ./src/adc.c
-# SRC += ./src/dma.c
+SRC += ./src/adc.c
+SRC += ./src/dma.c
 SRC += ./src/usart.c
 # SRC += ./src/flash_program.c
 # SRC += ./src/hard.c
@@ -86,6 +86,7 @@ SRC += ./src/test_functions.c
 SRC += ./src/comms.c
 SRC += ./src/dsp.c
 SRC += ./src/temp_sensor.c
+SRC += ./src/manager.c
 
 
 ## Core Support

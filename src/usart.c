@@ -252,6 +252,24 @@ void Usart1HaveDataReset (void)
 }
 
 
+void Usart1RxDisable (void)
+{
+    USART1->CR1 &= ~USART_CR1_RXNEIE_RXFNEIE;
+    USART1->CR1 &= ~USART_CR1_RE;
+}
+
+
+void Usart1RxEnable (void)
+{
+    USART1->CR1 |= USART_CR1_RXNEIE_RXFNEIE | USART_CR1_RE;
+}
+
+
+unsigned char Usart1EndOfTx (void)
+{
+    return (USART1->ISR & USART_ISR_TC);
+}
+
 //////////////////////
 // USART2 Functions //
 //////////////////////

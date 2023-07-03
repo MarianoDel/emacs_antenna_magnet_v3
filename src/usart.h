@@ -26,6 +26,10 @@ unsigned char Usart1ReadBuffer (unsigned char *, unsigned short);
 void USART1_IRQHandler(void);
 unsigned char Usart1HaveData (void);
 void Usart1HaveDataReset (void);
+void Usart1RxDisable (void);
+void Usart1RxEnable (void);
+unsigned char Usart1EndOfTx (void);
+
 
 void Usart2Config(void);
 void Usart2SendSingle (unsigned char);

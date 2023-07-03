@@ -184,7 +184,7 @@ void Manager (char * ant_name, char * ant_params)
         // check the rx msg, go to connect on goog msg
         if (Usart1HaveData())
         {
-            Usart1ReadBuffer(s_msg, sizeof(s_msg));
+            Usart1ReadBuffer((unsigned char *)s_msg, sizeof(s_msg));
             Usart1HaveDataReset();
 
             comms_answers_e a = COMMS_ERROR;
