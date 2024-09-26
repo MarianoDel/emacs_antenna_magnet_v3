@@ -137,7 +137,7 @@ void Manager (char * ant_name, char * ant_params)
             mngr_state = RX_SERIE;
         }
 
-        if (!timer_1sec_mngr)	//mas de 10 segs sin comunicacion
+        if (!timer_1sec_mngr)    // more than 10 secs without comms
         {
             mngr_state = STAND_BY;
         }
