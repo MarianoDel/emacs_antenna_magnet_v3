@@ -267,8 +267,8 @@ const char s_antenna [] = { "ant4,013.10,110.80,003.50,065.50\r\n" };
 const char s_name [] = { "name:Tunnel 10 inches\r\n" };
 #endif
 
-#ifdef ANTK_SKIN2INCHES
-const char s_antenna [] = { "anta,067.40,081.00,000.33,055.50\r\n" };
+#ifdef ANTK_SKIN2INCHES    // with good temp on plastic covers sense 40C; from 65C to 50C change
+const char s_antenna [] = { "anta,067.40,081.00,000.33,050.50\r\n" };
 const char s_name [] = { "name:GT Skin Antenna\r\n" };
 #endif
 
@@ -325,11 +325,17 @@ int main(void)
     Temp_Sensor_Init((unsigned short) calc);
 
     Usart1RxDisable();
+    sprintf(str1, "Hard: %s Soft: %s\r\n",
+            HARD_VER,
+            SOFT_VER);
+    Usart1Send(str1);
+    Wait_ms(50);
+    
     sprintf(str1, "ts_cal1: %d adj: %d\r\n",
             ts_cal1,
             (unsigned short) calc);
     Usart1Send(str1);
-    Wait_ms(100);
+    Wait_ms(50);    
     Usart1RxEnable();
 
     //--- Main loop ---//

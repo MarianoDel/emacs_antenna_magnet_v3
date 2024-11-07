@@ -83,8 +83,15 @@ void Usart1Config(void)
 #else
 #error "No Clock Frequency defined on hard.h"
 #endif
-    
+
+#ifdef HARD_4_0
+    // on HARD_4_0 tx & rx inverted
+    USART1->CR2 |= USART_CR2_TXINV | USART_CR2_RXINV;
+#else
+    // on HARD_3_0 only tx inverted
     USART1->CR2 |= USART_CR2_TXINV;    // tx inverted
+#endif
+
     // USART1->CR1 = USART_CR1_RE | USART_CR1_TE | USART_CR1_UE;
     // USART1->CR1 = USART_CR1_RXNEIE | USART_CR1_RE | USART_CR1_UE;	//SIN TX
     USART1->CR1 = USART_CR1_RXNEIE_RXFNEIE | USART_CR1_RE | USART_CR1_TE | USART_CR1_UE;    //Rx int + Tx
