@@ -84,7 +84,10 @@ void Usart1Config(void)
 #error "No Clock Frequency defined on hard.h"
 #endif
 
-#ifdef HARD_4_0
+#if defined HARD_4_1
+    // on HARD_4_1 tx & rx on same pin
+    USART1->CR3 |= USART_CR3_HDSEL;
+#elif defined HARD_4_0
     // on HARD_4_0 tx & rx inverted
     USART1->CR2 |= USART_CR2_TXINV | USART_CR2_RXINV;
 #else
@@ -96,18 +99,28 @@ void Usart1Config(void)
     // USART1->CR1 = USART_CR1_RXNEIE | USART_CR1_RE | USART_CR1_UE;	//SIN TX
     USART1->CR1 = USART_CR1_RXNEIE_RXFNEIE | USART_CR1_RE | USART_CR1_TE | USART_CR1_UE;    //Rx int + Tx
 
+#ifdef HARD_4_1
+    // only tx pin for tx/rx
+    // config pins to alternative
+    unsigned int temp;
+    temp = GPIOB->MODER;    // 2 bits por pin
+    temp &= 0xFFFFCFFF;    // PB6 alternative
+    temp |= 0x00002000;    
+    GPIOB->MODER = temp;
+
+    temp = GPIOB->OTYPER;    //1 bit por pin
+    temp &= 0xFFFFFFBF;    // PB6 open collector
+    temp |= 0x00000040;
+    GPIOB->OTYPER = temp;    
+#else
     // config pins to alternative
     unsigned int temp;
     temp = GPIOB->MODER;    // 2 bits por pin
     temp &= 0xFFFF0FFF;    // PB6 PB7 alternative
     temp |= 0x0000A000;    
     GPIOB->MODER = temp;
+#endif
     
-    // temp = GPIOA->AFR[1];
-    // temp &= 0xFFFFF00F;
-    // temp |= 0x00000110;    //PA10 -> AF1 PA9 -> AF1
-    // GPIOA->AFR[1] = temp;
-
     ptx1 = tx1buff;
     ptx1_pckt_index = tx1buff;
     prx1 = rx1buff;

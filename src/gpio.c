@@ -14,11 +14,18 @@
 #include "hard.h"
 
 // Ports Configs ---------------------------------------------------------------
+#ifdef HARD_4_1
+#define GPIOA_ENABLE
+#define GPIOB_ENABLE
+//#define GPIOF_ENABLE
+// #define WITH_EXTI
+#else
 // #define GPIOA_ENABLE
 #define GPIOB_ENABLE
 //#define GPIOF_ENABLE
-
 // #define WITH_EXTI
+#endif
+
 
 // - Ports Clocks
 #define GPIOA_CLK    (RCC->IOPENR & 0x00000001)
@@ -82,8 +89,8 @@ void GPIO_Config (void)
         GPIOA_CLK_ON;
     
     temp = GPIOA->MODER;    //2 bits por pin
-    temp &= 0xFCCC0000;    //PA0 analog; PA1 output; PA2 - PA3 alternative; PA4 - PA7 output
-    temp |= 0x012055A7;    //PA8 input exti; PA10 alternative; PA12 output
+    temp &= 0xFCFFFFFF;    // PA12 output
+    temp |= 0x01000000;
     GPIOA->MODER = temp;
 
     temp = GPIOA->OTYPER;    //1 bit por pin
@@ -92,7 +99,7 @@ void GPIO_Config (void)
     GPIOA->OTYPER = temp;
     
     temp = GPIOA->OSPEEDR;	//2 bits por pin
-    temp &= 0xFCFF00C3;    //PA1 - PA2, PA4 - PA7 low speed
+    temp &= 0xFCFFFFFF;    //
     temp |= 0x00000000;    //PA12 low speed
     GPIOA->OSPEEDR = temp;
 
@@ -106,12 +113,32 @@ void GPIO_Config (void)
 #ifdef GPIOB_ENABLE    
     if (!GPIOB_CLK)
         GPIOB_CLK_ON;
+
+#ifdef HARD_4_1    
+    temp = GPIOB->MODER;    //2 bits por pin
+    temp &= 0xFFFF3FFC;    // PB0 output; PB6 alternative on the driver
+    temp |= 0x00000001;    // PB7 input pullup
+    GPIOB->MODER = temp;
+
+    temp = GPIOB->OTYPER;	//1 bit por pin
+    temp &= 0xFFFFFFFF;
+    temp |= 0x00000000;
+    GPIOB->OTYPER = temp;
+
+    temp = GPIOB->OSPEEDR;	//2 bits por pin
+    temp &= 0xFFFFF3FC;        //PB0 & PB6 low speed
+    temp |= 0x00000000;
+    GPIOB->OSPEEDR = temp;
+
+    temp = GPIOB->PUPDR;    //2 bits por pin
+    temp &= 0xFFFF3FFF;    // PB7 pullup
+    temp |= 0x00004000;
+    GPIOB->PUPDR = temp;
     
+#else    // old hardware 4.0 and older
     temp = GPIOB->MODER;    //2 bits por pin
     temp &= 0xFFFFFFFC;    //PB0 output; PB6 PB7 alternative on the driver
     temp |= 0x00000001;        
-    // temp &= 0xFFFF0FFC;    //PB0 output; PB6 PB7 alternative
-    // temp |= 0x0000A001;
     GPIOB->MODER = temp;
 
     temp = GPIOB->OTYPER;	//1 bit por pin
@@ -129,8 +156,9 @@ void GPIO_Config (void)
     temp |= 0x00000000;
     // temp &= 0xFFFFF03F;    //PB3 PB4 PB5 pullup
     // temp |= 0x00000540;
-    GPIOB->PUPDR = temp;
-#endif    //GPIOB_ENABLE
+    GPIOB->PUPDR = temp;    
+#endif    // end of old hardware
+#endif    // end of GPIOB_ENABLE
     
     //--- GPIO C ---//
 #ifdef GPIOC_ENABLE

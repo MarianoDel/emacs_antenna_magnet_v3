@@ -28,8 +28,10 @@
 // Select the Antenna to use here! ---------------------------------------------
 // #define ANTENA0    // Plannar 5 inchec -- plana 125mm 23mm 1.3kg alambre 0.8mm dia
 // #define ANTENA1    //toroidal diametro mediana
-// #define ANTENA1B    // plana 125mm 23mm 1.3kg -- Plannar 5 inches
+#define ANTENA1B    // plana 125mm 23mm 1.3kg -- Plannar 5 inches
+// #define ANTENA1C    // plana 125mm 23mm 1.3kg -- Plannar 5 inches -- 19-06-2025
 // #define ANTENA2	//cilindrica chica tunel de munieca
+// #define ANTENA2B    // wrist tunnel 4" 07/2025
 // #define ANTENA3	//cilindrica mediana
 // #define ANTENA4        // tunnel 8" pero solo 4 ohms
 // #define ANTENA4B	//cilindrica grande, fabricada 18-06-2021
@@ -40,6 +42,7 @@
 // #define ANTENA4G    // tunnel 8", fabricada 10-01-2023
 // #define ANTENA4H    // tunnel 5", fabricada 10-01-2023
 // #define ANTENA4I    //tunnel 12", oval fabricada 25-09-2023, 10.4ohms 138mHy
+// #define ANTENA4J    //tunnel 12", oval fabricada 20-03-2025, 9.2ohms 108mHy
 //#define ANTENA5	//cilindrica muy chica OJOS
 //#define ANTENA6	//cilindrica vieja de madera
 // #define ANTENA7 //pencil tunel
@@ -69,7 +72,8 @@
 
 
 // #define ANTK_T10INCHES    // tunnel 10" 1mm 740T
-#define ANTK_SKIN2INCHES    // bob ale 0.25mm 
+// #define ANTK_SKIN2INCHES    // bob ale 0.25mm
+// #define ANTK_GOOG_2    // bob ale 0.25mm x2 en paralelo
 
 // Externals -------------------------------------------------------------------
 // -- Externals for the timer module -----------------------
@@ -106,8 +110,18 @@ const char s_antenna [] = { "ant1,017.00,120.00,001.30,065.50\r\n" };
 const char s_name [] = { "name:Plannar 5 inches\r\n" };
 #endif
 
+#ifdef ANTENA1C // plana 125mm 23mm 1.3kg -- Plannar 5 inches -- 19-06-2025
+const char s_antenna [] = { "ant1,013.80,120.00,001.50,065.50\r\n" };
+const char s_name [] = { "name:Plannar 5 inches\r\n" };
+#endif
+
 #ifdef ANTENA2 //cilindrica chica
 const char s_antenna [] = { "ant2,005.70,011.10,002.80,065.50\r\n" };
+const char s_name [] = { "name:Wrist Tunnel\r\n" };
+#endif
+
+#ifdef ANTENA2B    // wrist tunnel 4" 07/2025
+const char s_antenna [] = { "ant2,012.80,056.00,002.50,065.50\r\n" };
 const char s_name [] = { "name:Wrist Tunnel\r\n" };
 #endif
 
@@ -147,7 +161,9 @@ const char s_name [] = { "name:Head Tunnel 10\"\r\n" };
 #endif
 
 #ifdef ANTENA4G    //tunnel 8" 4 capas 1mm 1000T, 10-01-2023
-const char s_antenna [] = { "ant4,015.30,155.00,003.50,065.50\r\n" };
+// const char s_antenna [] = { "ant4,015.30,155.00,003.50,065.50\r\n" };
+// const char s_antenna [] = { "ant4,014.60,130.00,003.50,065.50\r\n" };
+const char s_antenna [] = { "ant4,015.70,142.00,003.50,065.50\r\n" };
 const char s_name [] = { "name:Tunnel 8 inches\r\n" };
 #endif
 
@@ -158,6 +174,11 @@ const char s_name [] = { "name:Tunnel 5 inches\r\n" };
 
 #ifdef ANTENA4I    //tunnel 12" 25-09-2023, 
 const char s_antenna [] = { "ant4,010.40,138.00,003.50,065.50\r\n" };
+const char s_name [] = { "name:Head Tunnel\r\n" };
+#endif
+
+#ifdef ANTENA4J    //tunnel 12" 20-03-2025, (250 x 300) + 12-05-25
+const char s_antenna [] = { "ant4,009.20,108.00,003.50,065.50\r\n" };
 const char s_name [] = { "name:Head Tunnel\r\n" };
 #endif
 
@@ -272,6 +293,11 @@ const char s_antenna [] = { "anta,067.40,081.00,000.33,050.50\r\n" };
 const char s_name [] = { "name:GT Skin Antenna\r\n" };
 #endif
 
+#ifdef ANTK_GOOG_2    // two parallel of skin 2 inches
+const char s_antenna [] = { "anta,033.70,040.50,000.66,065.50\r\n" };
+const char s_name [] = { "name:GT Googles 2\r\n" };
+#endif
+
 // Module Private Functions ----------------------------------------------------
 void SysTickError (void);
 void TimingDelay_Decrement (void);
@@ -338,11 +364,39 @@ int main(void)
     Wait_ms(50);    
     Usart1RxEnable();
 
+    // while (1)
+    // {
+    // 	for (int i = 0; i < 5; i++)
+    // 	{
+    // 	    Led_Green_On();
+    // 	    Wait_ms(250);
+    // 	    Led_Green_Off();
+    // 	    Wait_ms(750);
+    // 	}
+
+    // 	for (int i = 0; i < 5; i++)
+    // 	{
+    // 	    Led_Red_On();
+    // 	    Wait_ms(250);
+    // 	    Led_Red_Off();
+    // 	    Wait_ms(750);
+    // 	}
+    // }
+    // while (1)
+    // {
+    // 	if (PULSE_INPUT)
+    // 	    Led_Red_On();
+    // 	else
+    // 	    Led_Red_Off();
+    // }
     //--- Main loop ---//
     while(1)
     {
         // Production Program
-        Manager ((char *) s_name, (char *) s_antenna);    
+        Manager ((char *) s_name, (char *) s_antenna);
+
+	// Check for pulses on ver 4.1
+	Led_Check_Pulses ();
     }
 
     return 0;
@@ -379,18 +433,6 @@ void TimingDelay_Decrement(void)
     if (timer_standby)
         timer_standby--;
 
-}
-
-
-void Led_On (void)
-{
-    LED_ON;
-}
-
-
-void Led_Off (void)
-{
-    LED_OFF;
 }
 
 

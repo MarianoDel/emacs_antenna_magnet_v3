@@ -80,7 +80,7 @@ SRC += ./src/adc.c
 SRC += ./src/dma.c
 SRC += ./src/usart.c
 # SRC += ./src/flash_program.c
-# SRC += ./src/hard.c
+SRC += ./src/hard.c
 
 SRC += ./src/test_functions.c
 SRC += ./src/comms.c
